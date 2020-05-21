@@ -1528,22 +1528,19 @@ class CategoryCore extends ObjectModel
      */
     public function getParentsCategories($idLang = null)
     {
-        $context = Context::getContext()->cloneContext();
-        $context->shop = clone $context->shop;
+        $context = Context::getContext();
 
         if (null === $idLang) {
             $idLang = $context->language->id;
         }
 
-        $categories = null;
-        $idCurrent = $this->id;
-        if (!$context->shop->id) {
-            $context->shop = new Shop(Configuration::get('PS_SHOP_DEFAULT'));
-        }
+        $shop = $context->shop->id ? $context->shop : new Shop(Configuration::get('PS_SHOP_DEFAULT'));
+
         if (count(Category::getCategoriesWithoutParent()) > 1) {
-            $context->shop->id_category = (int) Configuration::get('PS_ROOT_CATEGORY');
+            $idShopRootCategory = Configuration::get('PS_ROOT_CATEGORY');
+        } else {
+            $idShopRootCategory = $shop->id_category;
         }
-        $idShop = $context->shop->id;
 
         $sqlAppend = 'FROM `' . _DB_PREFIX_ . 'category` c
 			LEFT JOIN `' . _DB_PREFIX_ . 'category_lang` cl
@@ -1551,42 +1548,40 @@ class CategoryCore extends ObjectModel
                     AND `id_lang` = ' . (int) $idLang . Shop::addSqlRestrictionOnLang('cl') . ')';
         if (Shop::isFeatureActive() && Shop::getContext() === Shop::CONTEXT_SHOP) {
             $sqlAppend .= ' LEFT JOIN `' . _DB_PREFIX_ . 'category_shop` cs ' .
-                'ON (c.`id_category` = cs.`id_category` AND cs.`id_shop` = ' . (int) $idShop . ')';
-        }
-        if (Shop::isFeatureActive() && Shop::getContext() === Shop::CONTEXT_SHOP) {
-            $sqlAppend .= ' AND cs.`id_shop` = ' . (int) $context->shop->id;
-        }
-        $rootCategory = Category::getRootCategory();
-        if (Shop::isFeatureActive() && Shop::getContext() === Shop::CONTEXT_SHOP
-            && (!Tools::isSubmit('id_category')
-                || (int) Tools::getValue('id_category') == (int) $rootCategory->id
-                || (int) $rootCategory->id == (int) $context->shop->id_category)) {
-            $sqlAppend .= ' AND c.`id_parent` != 0';
-        }
+                'ON (c.`id_category` = cs.`id_category` AND cs.`id_shop` = ' . (int) $shop->id . ')' .
+                ' AND cs.`id_shop` = ' . (int) $shop->id;
 
-        $categories = [];
+            $rootCategory = Category::getRootCategory();
+            if (
+                !Tools::isSubmit('id_category')
+                || (int) Tools::getValue('id_category') == (int) $rootCategory->id
+                || (int) $rootCategory->id == (int) $idShopRootCategory
+            ) {
+                $sqlAppend .= ' AND c.`id_parent` != 0';
+            }
+        }
 
         $treeInfo = Db::getInstance(_PS_USE_SQL_SLAVE_)->getRow(
-            'SELECT c.`nleft`, c.`nright`  ' . $sqlAppend . ' WHERE c.`id_category` = ' . (int) $idCurrent
+            'SELECT c.`nleft`, c.`nright`  ' . $sqlAppend . ' WHERE c.`id_category` = ' . (int) $this->id
         );
 
-        if (!empty($treeInfo)) {
-            $rootTreeInfo = Db::getInstance(_PS_USE_SQL_SLAVE_)->getRow(
-                'SELECT c.`nleft`, c.`nright` FROM `' . _DB_PREFIX_ . 'category` c
-            WHERE c.`id_category` = ' . (int) $context->shop->id_category
-            );
+        if (empty($treeInfo)) {
+            return [];
+        }
 
-            $categories = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS(
-                'SELECT c.*, cl.*  ' . $sqlAppend .
+        $rootTreeInfo = Db::getInstance(_PS_USE_SQL_SLAVE_)->getRow(
+            'SELECT c.`nleft`, c.`nright` FROM `' . _DB_PREFIX_ . 'category` c ' .
+            ' WHERE c.`id_category` = ' . (int) $idShopRootCategory
+        );
+
+        return Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS(
+            'SELECT c.*, cl.*  ' . $sqlAppend .
                 ' WHERE c.`nleft` <= ' . (int) $treeInfo['nleft'] .
                 ' AND c.`nright` >= ' . (int) $treeInfo['nright'] .
                 ' AND c.`nleft` >= ' . (int) $rootTreeInfo['nleft'] .
                 ' AND c.`nright` <= ' . (int) $rootTreeInfo['nright'] .
                 ' ORDER BY `nleft` DESC'
-            );
-        }
-
-        return $categories;
+        );
     }
 
     /**
