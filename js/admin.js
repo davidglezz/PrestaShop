@@ -233,7 +233,7 @@ function displayFlags(languages, defaultLanguageID, employee_cookie)
   if ($('.translatable'))
   {
     $('.translatable').each(function() {
-      if (!$(this).find('.displayed_flag').length > 0) {
+      if (!$(this).find('.displayed_flag')) {
         $.each(languages, function(key, language) {
           if (language['id_lang'] == defaultLanguageID)
           {
