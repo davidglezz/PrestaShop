@@ -616,7 +616,7 @@ function add_new_range()
 
 function delete_new_range()
 {
-	if ($('#new_range_form_placeholder').find('td').length = 1)
+	if ($('#new_range_form_placeholder').find('td').length === 1)
 		return false;
 }
 
