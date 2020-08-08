@@ -1594,7 +1594,7 @@ function isCleanHtml(content)
   events += '|onselectstart|onstart|onstop';
 
   var script1 = /<[\s]*script/im;
-  var script2 = new RegExp('('+events+')[\s]*=', 'im');
+  var script2 = new RegExp('('+events+')[s]*=', 'im');
   var script3 = /.*script\:/im;
   var script4 = /<[\s]*(i?frame|embed|object)/im;
 
