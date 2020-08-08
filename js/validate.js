@@ -71,9 +71,9 @@ var unicode_hack = (function() {
 			regexpString = regexpString.source;
 		}
 		regexpString = regexpString.replace(/\\p\{(..?)\}/g, function(match,group) {
-		var unicode_categorie = unicodeCategories[group];
-		if (!classes)
-			unicode_category = unicode_categorie.replace(/\[(.*?)\]/g,"$1")
+			var unicode_categorie = unicodeCategories[group];
+			if (!classes)
+				unicode_category = unicode_categorie.replace(/\[(.*?)\]/g,"$1")
 			return unicode_category || match;
 		});
 		return new RegExp(regexpString,modifiers);
